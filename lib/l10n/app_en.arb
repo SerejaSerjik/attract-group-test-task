@@ -1,0 +1,12 @@
+{
+  "appTitle": "Image Gallery",
+  "cacheSize": "Cache Size",
+  "clearCache": "Clear Cache",
+  "clearCacheTitle": "Clear Cache",
+  "clearCacheMessage": "Are you sure you want to clear all image cache? All saved images will be deleted from the device.",
+  "cancel": "Cancel",
+  "clear": "Clear",
+  "cacheCleared": "Cache cleared successfully!",
+  "cacheClearing": "Clearing cache...",
+  "imagesDeletedFromStorage": "🧹 All images deleted from local storage"
+}
