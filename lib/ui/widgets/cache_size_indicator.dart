@@ -119,8 +119,11 @@ class _CacheSizeIndicatorState extends State<CacheSizeIndicator> with TickerProv
           final prevEntry = cacheHistory[cacheHistory.length - 2];
           final change = lastEntry.sizeBytes - prevEntry.sizeBytes;
           if (change != 0) {
+            final changeSign = change > 0 ? '+' : '';
+            final changeMB = (change.abs() / (1024 * 1024)).toStringAsFixed(1);
+            final direction = change > 0 ? 'increased' : 'decreased';
             log(
-              '🔄 CACHE INDICATOR: Size changed by ${(change / (1024 * 1024)).toStringAsFixed(1)}MB - Current: $lastEntry.formattedSize',
+              '🔄 CACHE INDICATOR: Cache size $direction by ${changeSign}${changeMB}MB - Current: $lastEntry.formattedSize',
               name: 'CacheSizeIndicator',
             );
           }
