@@ -5,6 +5,7 @@ import 'package:flutter_image_gallery/features/gallery/domain/entities/image_ent
 import 'package:flutter_image_gallery/features/gallery/presentation/cubits/image_gallery_cubit.dart';
 import 'package:flutter_image_gallery/ui/widgets/image_shimmer_placeholder.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as path;
 
 /// Custom image widget with manual caching using file-based caching
 /// Provides image loading and caching without external dependencies
@@ -21,6 +22,7 @@ class _ImageGridItemState extends State<ImageGridItem> {
   File? _cachedImageFile;
   bool _isLoading = true;
   bool _hasError = false;
+  bool _loadedFromCache = false; // Track if image was loaded from cache
 
   @override
   void initState() {
@@ -40,10 +42,25 @@ class _ImageGridItemState extends State<ImageGridItem> {
     setState(() {
       _isLoading = true;
       _hasError = false;
+      _loadedFromCache = false; // Reset flag
     });
 
     try {
       final cacheManager = context.read<ImageGalleryCubit>().repository.cacheManagerService;
+
+      // Check if file already exists in cache
+      final cacheDir = await cacheManager.getCacheDirectory();
+      if (cacheDir != null) {
+        final fileName = '${widget.image.thumbnailUrl.hashCode.toString()}.jpg';
+        final filePath = path.join(cacheDir.path, fileName);
+        final cachedFile = File(filePath);
+
+        if (await cachedFile.exists()) {
+          _loadedFromCache = true;
+          log('📦 [ImageWidget-${widget.image.id}] Image loaded from cache', name: 'ImageGridItem');
+        }
+      }
+
       final file = await cacheManager.getSingleFile(widget.image.thumbnailUrl);
 
       if (mounted) {
@@ -51,7 +68,12 @@ class _ImageGridItemState extends State<ImageGridItem> {
           _cachedImageFile = file;
           _isLoading = false;
         });
-        log('✅ [ImageWidget-${widget.image.id}] Image loaded and cached successfully', name: 'ImageGridItem');
+
+        if (_loadedFromCache) {
+          log('✅ [ImageWidget-${widget.image.id}] Image confirmed from cache', name: 'ImageGridItem');
+        } else {
+          log('🌐 [ImageWidget-${widget.image.id}] Image downloaded from network', name: 'ImageGridItem');
+        }
 
         // Update cache size indicator after successful image loading/caching
         if (mounted) {
@@ -71,9 +93,19 @@ class _ImageGridItemState extends State<ImageGridItem> {
 
   @override
   Widget build(BuildContext context) {
+    // Choose border color based on image source
+    final borderColor = _loadedFromCache ? Colors.yellow : Colors.blue;
+    final borderWidth = _loadedFromCache || !_isLoading ? 2.0 : 0.0;
+
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: borderColor,
+          width: borderWidth,
+        ),
+      ),
       child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _buildImageContent()),
     );
   }

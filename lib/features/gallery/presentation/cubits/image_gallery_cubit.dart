@@ -228,13 +228,22 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
     }
   }
 
+  bool _isFastFillInProgress = false;
+
   Future<void> fastFillCache() async {
     log('⚡ [Cubit] Starting fast cache fill (200MB with fake data)', name: 'ImageGalleryCubit');
 
-    if (state is ImageGalleryLoading) {
-      log('⚠️ [Cubit] Fast cache fill skipped - already loading', name: 'ImageGalleryCubit');
+    if (_isFastFillInProgress) {
+      log('⚠️ [Cubit] Fast cache fill skipped - already in progress', name: 'ImageGalleryCubit');
       return;
     }
+
+    if (state is ImageGalleryLoading) {
+      log('⚠️ [Cubit] Fast cache fill skipped - gallery loading', name: 'ImageGalleryCubit');
+      return;
+    }
+
+    _isFastFillInProgress = true;
 
     // Allow fast cache fill to proceed even if cubit is closed - this is a critical operation
     if (!isClosed) {
@@ -267,6 +276,8 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
       if (!isClosed) {
         emit(ImageGalleryError(message: 'Fast cache fill failed: $e'));
       }
+    } finally {
+      _isFastFillInProgress = false;
     }
   }
 
