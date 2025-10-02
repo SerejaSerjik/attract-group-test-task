@@ -11,6 +11,7 @@ import 'package:injectable/injectable.dart';
 class CacheManagerService {
   Directory? _cacheDir;
   bool _isInitialized = false;
+  bool _isCleanupRunning = false;
 
   /// Initialize cache directory
   Future<void> init() async {
@@ -88,8 +89,19 @@ class CacheManagerService {
 
       if (response.statusCode == 200) {
         await file.writeAsBytes(response.bodyBytes);
+        // Update file modification time for LRU eviction
+        await file.setLastModified(DateTime.now());
         final length = await file.length();
         log('✅ CacheManager: Downloaded ${url.split('/').last} ($length bytes)', name: 'CacheManager');
+
+        // Check if cleanup is needed after successful download (100MB limit for LRU testing)
+        final currentSize = await getCacheSize();
+        if (currentSize > 100 * 1024 * 1024) {
+          // 100MB for LRU testing - original requirement was 1GB
+          log('🧽 CacheManager: Cache size exceeded 100MB after download, running cleanup...', name: 'CacheManager');
+          await cleanup();
+        }
+
         return file;
       } else {
         throw Exception('Failed to download image: ${response.statusCode}');
@@ -109,6 +121,8 @@ class CacheManagerService {
     // Try to get from cache first
     final cachedFile = await getFileFromCache(url);
     if (cachedFile != null) {
+      // Update file modification time for LRU eviction (recently accessed)
+      await cachedFile.setLastModified(DateTime.now());
       log('✅ CacheManager: Cache hit for $url', name: 'CacheManager');
       return cachedFile;
     }
@@ -208,11 +222,20 @@ class CacheManagerService {
     }
   }
 
-  /// Clean up cache files to stay under 1GB limit (LRU - remove oldest files first)
-  Future<void> cleanup({int maxSizeBytes = 1024 * 1024 * 1024}) async {
+  /// Clean up cache files to stay under 100MB limit (LRU - remove oldest files first)
+  Future<void> cleanup({int maxSizeBytes = 100 * 1024 * 1024}) async {
+    // 100MB for LRU testing - original requirement was 1GB but emulator may have issues
+    // Prevent concurrent cleanup operations
+    if (_isCleanupRunning) {
+      log('⚠️ CacheManager: Cleanup already running, skipping', name: 'CacheManager');
+      return;
+    }
+
     if (!_isInitialized || _cacheDir == null) {
       return;
     }
+
+    _isCleanupRunning = true;
 
     try {
       log(
@@ -231,19 +254,35 @@ class CacheManagerService {
         name: 'CacheManager',
       );
 
-      // Remove oldest files until under limit
+      // Remove oldest files one by one until under limit
       for (final file in files) {
-        if (currentSize <= maxSizeBytes) {
-          break;
-        }
+        try {
+          // Check if file still exists before trying to delete
+          if (await file.exists()) {
+            final fileSize = await file.length();
+            await file.delete();
+            log(
+              '🗑️ CacheManager: Removed ${file.path.split('/').last} (${(fileSize / 1024).toStringAsFixed(1)}KB)',
+              name: 'CacheManager',
+            );
 
-        final fileSize = await file.length();
-        await file.delete();
-        currentSize -= fileSize;
-        log(
-          '🗑️ CacheManager: Removed ${file.path.split('/').last} (${(fileSize / 1024).toStringAsFixed(1)}KB)',
-          name: 'CacheManager',
-        );
+            // Recalculate cache size after each deletion
+            currentSize = await getCacheSize();
+            log(
+              '📊 CacheManager: Cache size after removal: ${(currentSize / (1024 * 1024)).toStringAsFixed(1)}MB',
+              name: 'CacheManager',
+            );
+
+            // Stop if we're now under the limit
+            if (currentSize <= maxSizeBytes) {
+              break;
+            }
+          }
+        } catch (e) {
+          // Skip files that can't be accessed or deleted
+          log('⚠️ CacheManager: Skipping problematic file ${file.path.split('/').last}: $e', name: 'CacheManager');
+          continue;
+        }
       }
 
       log(
@@ -252,6 +291,8 @@ class CacheManagerService {
       );
     } catch (e) {
       log('❌ CacheManager: Error during cleanup: $e', name: 'CacheManager');
+    } finally {
+      _isCleanupRunning = false;
     }
   }
 

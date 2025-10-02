@@ -105,7 +105,7 @@ class _CacheSizeIndicatorState extends State<CacheSizeIndicator> with TickerProv
           cacheHistory = state.cacheHistory;
         }
 
-        // Логируем текущий размер кэша при каждом билде
+        // Log current cache size on every build
         final cacheSizeMB = (cacheSizeBytes / (1024 * 1024)).toStringAsFixed(1);
         log(
           '📊 CACHE INDICATOR: Building with cache size ${cacheSizeMB}MB ($cacheSizeBytes bytes), state: ${state.runtimeType}',
@@ -125,7 +125,7 @@ class _CacheSizeIndicatorState extends State<CacheSizeIndicator> with TickerProv
             final changeMB = (change.abs() / (1024 * 1024)).toStringAsFixed(1);
             final direction = change > 0 ? 'increased' : 'decreased';
             log(
-              '🔄 CACHE INDICATOR: Cache size $direction by ${changeSign}${changeMB}MB - Current: $lastEntry.formattedSize',
+              '🔄 CACHE INDICATOR: Cache size $direction by $changeSign${changeMB}MB - Current: $lastEntry.formattedSize',
               name: 'CacheSizeIndicator',
             );
           }
@@ -149,7 +149,7 @@ class _CacheSizeIndicatorState extends State<CacheSizeIndicator> with TickerProv
     List<dynamic> cacheHistory,
   ) {
     final cacheSizeMB = (cacheSizeBytes / (1024 * 1024));
-    final maxCacheMB = 1024.0; // 1GB limit
+    final maxCacheMB = 100.0; // 100MB limit for LRU testing - original requirement was 1GB
     final usagePercentage = (cacheSizeMB / maxCacheMB).clamp(0.0, 1.0);
 
     log(

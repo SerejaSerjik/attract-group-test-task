@@ -66,59 +66,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _fastFillCache(BuildContext context) async {
-    try {
-      log('🚀 [CACHE] User requested fast cache fill to 200MB', name: 'HomeScreen');
-
-      // Показываем loading
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Starting fast cache fill to 200MB...'), duration: Duration(seconds: 2)),
-        );
-      }
-
-      await context.read<ImageGalleryCubit>().fastFillCache();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cache fill completed successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      log('❌ [CACHE] Error filling cache: $e', name: 'HomeScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to fill cache: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
   void _clearFullCache() async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
       log('🧹 [CACHE] User requested full cache clear', name: 'HomeScreen');
 
-      // Показываем loading
+      // Show loading state
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.cacheClearing), duration: const Duration(seconds: 1)));
       }
 
-      // Очищаем кэш через cubit
+      // Clear cache through cubit
       await context.read<ImageGalleryCubit>().clearCache();
 
-      // Показываем первый успех
+      // Show first success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -129,10 +93,10 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
-      // Ждем немного и показываем дополнительную информацию
+      // Wait a bit and show additional information
       await Future.delayed(const Duration(seconds: 1));
 
-      // Показываем второй Snackbar с дополнительной информацией
+      // Show second Snackbar with additional information
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -147,11 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       log('❌ [CACHE] Error clearing full cache: $e', name: 'HomeScreen');
 
-      // Показываем ошибку
+      // Show error message
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка при очистке кэша: $e'), backgroundColor: Colors.red));
+        ).showSnackBar(SnackBar(content: Text('Error clearing cache: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -168,39 +132,13 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_circle, size: 20, color: Colors.green),
-            tooltip: 'Быстро заполнить кэш 200MB',
-            onPressed: () => _fastFillCache(context),
-          ),
-          IconButton(
             icon: const Icon(Icons.cleaning_services, size: 20),
-            tooltip: 'Очистить полный кэш',
+            tooltip: 'Clear full cache',
             onPressed: () => _showClearCacheDialog(context),
           ),
         ],
       ),
-      body: BlocListener<ImageGalleryCubit, ImageGalleryState>(
-        listener: (context, state) {
-          if (state is ImageGalleryDatabasePopulated) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cache population completed successfully!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          } else if (state is ImageGalleryError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Operation failed: ${state.message}'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        },
-        child: _buildGallery(),
-      ),
+      body: _buildGallery(),
     );
   }
 
@@ -227,25 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ElevatedButton(
                   onPressed: () => context.read<ImageGalleryCubit>().loadInitialImages(),
                   child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (state is ImageGalleryDatabasePopulated) {
-          log('✅ [GALLERY] Showing database populated state', name: 'HomeScreen');
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 64),
-                SizedBox(height: 16),
-                Text('Database populated successfully!'),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: null, // This should navigate back or refresh
-                  child: Text('Continue'),
                 ),
               ],
             ),
@@ -283,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (context, index) {
             // If we're in the shimmer range (loading more)
             if (index >= images.length) {
-              // Показываем shimmer того же размера, что и реальные изображения
+              // Show shimmer placeholder of the same size as real images
               return const ImageShimmerPlaceholder();
             }
 

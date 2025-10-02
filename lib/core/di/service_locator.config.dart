@@ -20,14 +20,10 @@ import 'package:flutter_image_gallery/features/gallery/data/repositories/image_r
     as _i878;
 import 'package:flutter_image_gallery/features/gallery/domain/repositories/image_repository.dart'
     as _i772;
-import 'package:flutter_image_gallery/features/gallery/domain/usecases/fast_fill_cache_usecase.dart'
-    as _i866;
 import 'package:flutter_image_gallery/features/gallery/domain/usecases/get_images_usecase.dart'
     as _i855;
 import 'package:flutter_image_gallery/features/gallery/domain/usecases/get_infinite_scroll_images_usecase.dart'
     as _i229;
-import 'package:flutter_image_gallery/features/gallery/domain/usecases/populate_realm_database_usecase.dart'
-    as _i298;
 import 'package:flutter_image_gallery/features/gallery/presentation/cubits/image_gallery_cubit.dart'
     as _i787;
 import 'package:get_it/get_it.dart' as _i174;
@@ -54,8 +50,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i868.CacheDataSource(gh<_i849.CacheManagerService>()),
       instanceName: 'cache',
     );
-    gh.lazySingleton<_i866.FastFillCacheUseCase>(
-        () => _i866.FastFillCacheUseCase(gh<_i849.CacheManagerService>()));
     gh.lazySingleton<_i772.ImageRepository>(() => _i878.ImageRepositoryImpl(
           gh<_i455.ImageDataSource>(instanceName: 'infinite_scroll'),
           gh<_i455.ImageDataSource>(instanceName: 'cache'),
@@ -65,12 +59,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i855.GetImagesUseCase(gh<_i772.ImageRepository>()));
     gh.lazySingleton<_i229.GetInfiniteScrollImagesUseCase>(() =>
         _i229.GetInfiniteScrollImagesUseCase(gh<_i772.ImageRepository>()));
-    gh.lazySingleton<_i298.PopulateRealmDatabaseUseCase>(
-        () => _i298.PopulateRealmDatabaseUseCase(gh<_i772.ImageRepository>()));
     gh.lazySingleton<_i787.ImageGalleryCubit>(() => _i787.ImageGalleryCubit(
           gh<_i229.GetInfiniteScrollImagesUseCase>(),
-          gh<_i298.PopulateRealmDatabaseUseCase>(),
-          gh<_i866.FastFillCacheUseCase>(),
           gh<_i772.ImageRepository>(),
         ));
     return this;

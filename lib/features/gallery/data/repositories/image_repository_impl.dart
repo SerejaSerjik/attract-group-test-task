@@ -65,7 +65,7 @@ class ImageRepositoryImpl implements ImageRepository {
               name: 'ImageRepository',
             );
 
-            // Проверяем, что действительно не кэшируем
+            // Verify that we are not caching anything
             if (apiImages.isNotEmpty) {
               log(
                 '🚫 Repository: CONFIRMED - NO automatic caching for ${apiImages.length} images in infinite scroll mode',

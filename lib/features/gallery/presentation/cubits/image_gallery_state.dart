@@ -43,8 +43,6 @@ class ImageGalleryError extends ImageGalleryState {
   List<Object> get props => [message];
 }
 
-class ImageGalleryDatabasePopulated extends ImageGalleryState {}
-
 class ImageGalleryCacheSizeUpdated extends ImageGalleryState {
   final int cacheSizeBytes;
   final List<dynamic> cacheHistory;

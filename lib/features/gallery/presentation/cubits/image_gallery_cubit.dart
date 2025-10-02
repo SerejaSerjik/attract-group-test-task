@@ -5,13 +5,11 @@ import 'package:flutter_image_gallery/core/error/failures.dart';
 import 'package:flutter_image_gallery/features/gallery/domain/entities/image_entity.dart';
 import 'package:flutter_image_gallery/features/gallery/domain/repositories/image_repository.dart';
 import 'package:flutter_image_gallery/features/gallery/domain/usecases/get_infinite_scroll_images_usecase.dart';
-import 'package:flutter_image_gallery/features/gallery/domain/usecases/populate_realm_database_usecase.dart';
-import 'package:flutter_image_gallery/features/gallery/domain/usecases/fast_fill_cache_usecase.dart';
 import 'package:injectable/injectable.dart';
 
 part 'image_gallery_state.dart';
 
-/// Entry for tracking cache size changes over time - JARVIS-style monitoring
+/// Entry for tracking cache size changes over time - Cubit-style monitoring
 class CacheSizeEntry extends Equatable {
   final DateTime timestamp;
   final int sizeBytes;
@@ -34,16 +32,9 @@ class CacheSizeEntry extends Equatable {
 @LazySingleton()
 class ImageGalleryCubit extends Cubit<ImageGalleryState> {
   final GetInfiniteScrollImagesUseCase _getInfiniteScrollImagesUseCase;
-  final PopulateRealmDatabaseUseCase _populateRealmDatabaseUseCase;
-  final FastFillCacheUseCase _fastFillCacheUseCase;
   final ImageRepository _imageRepository;
 
-  ImageGalleryCubit(
-    this._getInfiniteScrollImagesUseCase,
-    this._populateRealmDatabaseUseCase,
-    this._fastFillCacheUseCase,
-    this._imageRepository,
-  ) : super(ImageGalleryInitial()) {
+  ImageGalleryCubit(this._getInfiniteScrollImagesUseCase, this._imageRepository) : super(ImageGalleryInitial()) {
     _initializeCacheSize();
   }
 
@@ -52,7 +43,7 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
   bool _hasMoreData = true;
   int _cacheSizeBytes = 0;
 
-  // Enhanced cache monitoring like Tony Stark's JARVIS
+  // Enhanced cache monitoring like Tony Stark's Cubit
   final List<CacheSizeEntry> _cacheHistory = [];
   static const int _maxHistorySize = 50; // Keep last 50 entries
 
@@ -183,104 +174,6 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
     );
   }
 
-  Future<void> populateCache({int imageCount = 100}) async {
-    log('🚀 [Cubit] populateCache called with imageCount=$imageCount', name: 'ImageGalleryCubit');
-    log('🏗️ [Cubit] Starting cache population with $imageCount images', name: 'ImageGalleryCubit');
-
-    if (state is ImageGalleryLoading) {
-      log('⚠️ [Cubit] Cache population skipped - already loading', name: 'ImageGalleryCubit');
-      return;
-    }
-
-    // Allow cache population to proceed even if cubit is closed - this is a critical operation
-    if (!isClosed) {
-      emit(ImageGalleryLoading());
-      log('🔄 [Cubit] Emitted loading state for cache population', name: 'ImageGalleryCubit');
-    }
-
-    try {
-      log('🔍 [Cubit] Calling use case to populate cache with $imageCount images', name: 'ImageGalleryCubit');
-      final result = await _populateRealmDatabaseUseCase(imageCount: imageCount);
-
-      result.fold(
-        (failure) {
-          log('❌ [Cubit] Cache population failed: $failure', name: 'ImageGalleryCubit');
-          if (!isClosed) {
-            emit(ImageGalleryError(message: _mapFailureToMessage(failure)));
-          }
-        },
-        (_) async {
-          log('✅ [Cubit] Cache population completed successfully', name: 'ImageGalleryCubit');
-          if (!isClosed) {
-            emit(ImageGalleryDatabasePopulated());
-          }
-          // Update cache size after population and log the operation
-          log('🔄 [Cubit] Updating cache size after population...', name: 'ImageGalleryCubit');
-          await _updateCacheSizeWithOperation('populate_cache');
-          log('✅ [Cubit] Cache size updated after population', name: 'ImageGalleryCubit');
-        },
-      );
-    } catch (e) {
-      log('❌ [Cubit] Cache population error: $e', name: 'ImageGalleryCubit');
-      if (!isClosed) {
-        emit(ImageGalleryError(message: 'Cache population failed: $e'));
-      }
-    }
-  }
-
-  bool _isFastFillInProgress = false;
-
-  Future<void> fastFillCache() async {
-    log('⚡ [Cubit] Starting fast cache fill (200MB with fake data)', name: 'ImageGalleryCubit');
-
-    if (_isFastFillInProgress) {
-      log('⚠️ [Cubit] Fast cache fill skipped - already in progress', name: 'ImageGalleryCubit');
-      return;
-    }
-
-    if (state is ImageGalleryLoading) {
-      log('⚠️ [Cubit] Fast cache fill skipped - gallery loading', name: 'ImageGalleryCubit');
-      return;
-    }
-
-    _isFastFillInProgress = true;
-
-    // Allow fast cache fill to proceed even if cubit is closed - this is a critical operation
-    if (!isClosed) {
-      emit(ImageGalleryLoading());
-      log('🔄 [Cubit] Emitted loading state for fast cache fill', name: 'ImageGalleryCubit');
-    }
-
-    try {
-      log('🔍 [Cubit] Calling use case to fast fill cache with 200MB fake data', name: 'ImageGalleryCubit');
-      final result = await _fastFillCacheUseCase();
-
-      result.fold(
-        (failure) {
-          log('❌ [Cubit] Fast cache fill failed: $failure', name: 'ImageGalleryCubit');
-          if (!isClosed) {
-            emit(ImageGalleryError(message: _mapFailureToMessage(failure)));
-          }
-        },
-        (_) async {
-          log('✅ [Cubit] Fast cache fill completed successfully', name: 'ImageGalleryCubit');
-          if (!isClosed) {
-            emit(ImageGalleryDatabasePopulated());
-          }
-          // Update cache size after population and log the operation
-          await _updateCacheSizeWithOperation('fast_fill_cache');
-        },
-      );
-    } catch (e) {
-      log('❌ [Cubit] Fast cache fill error: $e', name: 'ImageGalleryCubit');
-      if (!isClosed) {
-        emit(ImageGalleryError(message: 'Fast cache fill failed: $e'));
-      }
-    } finally {
-      _isFastFillInProgress = false;
-    }
-  }
-
   Future<void> clearCache() async {
     log(
       '🗑️ [Cubit] Starting full cache clear operation (current cache: ${(_cacheSizeBytes / (1024 * 1024)).toStringAsFixed(1)}MB, isClosed: $isClosed)',
@@ -351,16 +244,9 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
   Future<void> _initializeCacheSize() async {
     log('🔄 [Cubit] Initializing cache size on app startup', name: 'ImageGalleryCubit');
     await _updateCacheSize();
-
-    // DISABLED: Auto-population causes unwanted background downloads
-    // Users should load images manually when needed
-    log(
-      '📊 [Cubit] Cache size ${(_cacheSizeBytes / (1024 * 1024)).toStringAsFixed(1)}MB - auto-population DISABLED to prevent background downloads',
-      name: 'ImageGalleryCubit',
-    );
   }
 
-  /// Add cache size entry to history with JARVIS-style logging
+  /// Add cache size entry to history with Cubit-style logging
   void _addCacheHistoryEntry(String operation, int newSize) {
     final previousSize = _cacheHistory.isNotEmpty ? _cacheHistory.last.sizeBytes : 0;
     final change = newSize - previousSize;
@@ -379,21 +265,21 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
       _cacheHistory.removeAt(0);
     }
 
-    // JARVIS-style logging with detailed cache metrics
+    // Cubit-style logging with detailed cache metrics
     final emoji = change >= 0 ? (change > 0 ? '📈' : '📊') : '📉';
     final changeText = change != 0
         ? ' (${change >= 0 ? '+' : ''}${(change / (1024 * 1024)).toStringAsFixed(1)}MB)'
         : '';
 
     log(
-      '$emoji [JARVIS] Cache ${operation.toUpperCase()}: $entry.formattedSize$changeText | Total operations: $_cacheHistory.length',
+      '$emoji [Cubit] Cache ${operation.toUpperCase()}: $entry.formattedSize$changeText | Total operations: $_cacheHistory.length',
       name: 'CacheMonitor',
     );
 
     if (_cacheHistory.length >= 2) {
       final trend = _calculateCacheTrend();
       log(
-        '📊 [JARVIS] Cache Trend Analysis: $trend | Peak: ${_getPeakCacheSize().formattedSize} | Valley: ${_getMinCacheSize().formattedSize}',
+        '📊 [Cubit] Cache Trend Analysis: $trend | Peak: ${_getPeakCacheSize().formattedSize} | Valley: ${_getMinCacheSize().formattedSize}',
         name: 'CacheMonitor',
       );
     }
@@ -430,38 +316,6 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
     return _cacheHistory.reduce((a, b) => a.sizeBytes < b.sizeBytes ? a : b);
   }
 
-  /// Update cache size with specific operation type for JARVIS-style monitoring
-  Future<void> _updateCacheSizeWithOperation(String operation) async {
-    // Prevent multiple simultaneous cache size updates
-    if (_cacheSizeUpdatePending) {
-      log('⚠️ [Cubit] Cache size update skipped - update already pending', name: 'ImageGalleryCubit');
-      return;
-    }
-
-    _cacheSizeUpdatePending = true;
-
-    try {
-      final result = await _imageRepository.getCacheSize();
-      result.fold(
-        (failure) {
-          log('⚠️ [Cubit] Failed to get cache size: $failure', name: 'ImageGalleryCubit');
-        },
-        (size) {
-          _cacheSizeBytes = size;
-          _lastCacheSizeUpdate = DateTime.now();
-
-          // Add to JARVIS-style monitoring history with specific operation
-          _addCacheHistoryEntry(operation, size);
-
-          // Always emit cache size update state for operation-specific updates
-          emit(ImageGalleryCacheSizeUpdated(cacheSizeBytes: size, cacheHistory: _cacheHistory));
-        },
-      );
-    } finally {
-      _cacheSizeUpdatePending = false;
-    }
-  }
-
   /// Optimized cache size update with debouncing to prevent laggy UI updates
   Future<void> _updateCacheSize() async {
     // Prevent multiple simultaneous cache size updates
@@ -496,7 +350,7 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
             name: 'ImageGalleryCubit',
           );
 
-          // Add to JARVIS-style monitoring history
+          // Add to Cubit-style monitoring history
           _addCacheHistoryEntry('auto_update', size);
 
           // Only emit state change if cache size actually changed or if it's been more than 2 seconds

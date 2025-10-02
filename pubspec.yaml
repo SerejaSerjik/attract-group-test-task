@@ -43,6 +43,7 @@ dependencies:
   flutter_bloc: ^8.1.6
   dartz: ^0.10.1
   shimmer: ^3.0.0
+  path: any
   flutter_localizations:
     sdk: flutter
   intl: any
