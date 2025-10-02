@@ -5,7 +5,6 @@ import 'package:flutter_image_gallery/features/gallery/domain/entities/image_ent
 import 'package:flutter_image_gallery/features/gallery/presentation/cubits/image_gallery_cubit.dart';
 import 'package:flutter_image_gallery/ui/widgets/image_shimmer_placeholder.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path/path.dart' as path;
 
 /// Custom image widget with manual caching using file-based caching
 /// Provides image loading and caching without external dependencies
@@ -48,16 +47,17 @@ class _ImageGridItemState extends State<ImageGridItem> {
     try {
       final cacheManager = context.read<ImageGalleryCubit>().repository.cacheManagerService;
 
-      // Check if file already exists in cache
+      // Check if file already exists in cache before downloading
       final cacheDir = await cacheManager.getCacheDirectory();
       if (cacheDir != null) {
-        final fileName = '${widget.image.thumbnailUrl.hashCode.toString()}.jpg';
-        final filePath = path.join(cacheDir.path, fileName);
+        final filePath = cacheManager.getFilePath(widget.image.thumbnailUrl);
         final cachedFile = File(filePath);
 
         if (await cachedFile.exists()) {
           _loadedFromCache = true;
           log('📦 [ImageWidget-${widget.image.id}] Image loaded from cache', name: 'ImageGridItem');
+        } else {
+          log('🌐 [ImageWidget-${widget.image.id}] Image will be downloaded from network', name: 'ImageGridItem');
         }
       }
 
