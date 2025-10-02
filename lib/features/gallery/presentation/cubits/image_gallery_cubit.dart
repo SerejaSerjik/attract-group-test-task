@@ -322,6 +322,11 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
             name: 'ImageGalleryCubit',
           );
 
+          // Emit cache size update to refresh the indicator immediately
+          if (!isClosed) {
+            emit(ImageGalleryCacheSizeUpdated(cacheSizeBytes: 0, cacheHistory: _cacheHistory));
+          }
+
           // Reload images after clearing cache, but only if we're in infinite scroll mode
           // Always reload images after cache clear in infinite scroll mode
           await loadInitialImages();

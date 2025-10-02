@@ -91,6 +91,8 @@ class _CacheSizeIndicatorState extends State<CacheSizeIndicator> with TickerProv
         int cacheSizeBytes = cubit.cacheSizeBytes;
         if (state is ImageGalleryLoaded) {
           cacheSizeBytes = state.cacheSizeBytes;
+        } else if (state is ImageGalleryLoading) {
+          cacheSizeBytes = cubit.cacheSizeBytes; // Use cubit cache size during loading
         } else if (state is ImageGalleryLoadingMore) {
           cacheSizeBytes = state.cacheSizeBytes;
         } else if (state is ImageGalleryCacheSizeUpdated) {
