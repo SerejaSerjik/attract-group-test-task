@@ -101,10 +101,7 @@ class _ImageGridItemState extends State<ImageGridItem> {
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: borderColor,
-          width: borderWidth,
-        ),
+        side: BorderSide(color: borderColor, width: borderWidth),
       ),
       child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _buildImageContent()),
     );

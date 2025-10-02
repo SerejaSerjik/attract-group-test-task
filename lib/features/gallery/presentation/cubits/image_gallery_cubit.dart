@@ -499,10 +499,12 @@ class ImageGalleryCubit extends Cubit<ImageGalleryState> {
               oldSize != size ||
               (_lastCacheSizeUpdate != null && DateTime.now().difference(_lastCacheSizeUpdate!).inSeconds > 2);
 
-          if (shouldEmit) {
+          if (shouldEmit && !isClosed) {
             log('🔄 [CACHE] Emitting state update for cache indicator', name: 'ImageGalleryCubit');
             // Emit cache size update state to trigger UI update for cache indicator
             emit(ImageGalleryCacheSizeUpdated(cacheSizeBytes: size, cacheHistory: _cacheHistory));
+          } else if (shouldEmit && isClosed) {
+            log('⚠️ [CACHE] State update skipped - cubit is closed', name: 'ImageGalleryCubit');
           } else {
             log('⚠️ [CACHE] State update skipped (no significant change)', name: 'ImageGalleryCubit');
           }
